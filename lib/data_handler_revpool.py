@@ -28,13 +28,13 @@ def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', 
                 match_id = member.name.split('/')[-2]
                 json_file = tar.extractfile(member.name)
                 json_contents = json_file.read()
-                data_ = json.loads(json_contents)
+                data_ = json.loads(json_contents)['matchCentre']['events']
                 # transform data 
                 match_events = transform_data(data_)
                 data.append(pd.json_normalize(match_events, sep="_").assign(match_id=match_id))
 
                 # remove after test
-                # break                
+                break                
                 
     if verbose:
         print(' - COMPLETED\n')
@@ -44,8 +44,13 @@ def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', 
 
 def transform_data(match_events):
     
-    # unpack the aualifiers list 
+    # init team_id to negative number
+    # possession starts from 0
+    team_id = -1
+    poss = 0
+    
     for event in match_events:
+        # unpack the qualifiers list 
         if 'qualifiers' in event:
             for qualifier in event['qualifiers']:
                 if 'value' in qualifier:
@@ -53,6 +58,21 @@ def transform_data(match_events):
                 else:
                     event[qualifier['type']['displayName']] = True
             del event['qualifiers']
+        
+        # understand change of possession
+        if event['teamId'] != team_id:
+            # change of possession
+            team_id = event['teamId']
+            poss += 1
+        event['possession'] = poss
+        
+        # add the period
+        if 'period' in event:
+            event['period'] = event['period']['value']
+        
+        # add location 
+        if "x" in event and "y" in event:
+            event['location'] = f"[{event['x']}, {event['y']}]" 
     
     return match_events
 
