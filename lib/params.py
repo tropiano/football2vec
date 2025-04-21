@@ -181,10 +181,7 @@ class COLUMNS:
     START_Y = 'POS_START_Y'
     END_X = 'POS_END_X'
     END_Y = 'POS_END_Y'
-    # uncomment for statsbomb data
     ACTION_TYPE = 'type_name'
-    # uncomment for revpool data
-    # ACTION_TYPE = 'type_displayName'
     TEAM_NAME = 'team_name'
     TEAM_SIDE = 'Team'
     PLAYER_NAME = 'player_name'

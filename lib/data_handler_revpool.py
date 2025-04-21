@@ -14,7 +14,8 @@ import pandas as pd
 import tarfile
 
 
-def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', data_file='test.tar.gz', verbose=False):
+def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', 
+                         data_file='test.tar.gz', verbose=False, test_small_data=False):
     data = []
     if verbose:
         print('\nLoading all events data')
@@ -28,17 +29,23 @@ def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', 
                 match_id = member.name.split('/')[-2]
                 json_file = tar.extractfile(member.name)
                 json_contents = json_file.read()
-                data_ = json.loads(json_contents)['matchCentre']['events']
-                # transform data 
+                data_ = json.loads(json_contents)['matchCentre']
+                # transform data
+                if not data_:
+                    print(f'Empty match events for {member.name}')
+                    continue 
                 match_events = transform_data(data_)
                 data.append(pd.json_normalize(match_events, sep="_").assign(match_id=match_id))
-
-                # remove after test
-                break                
+                # break at first match if small data flag
+                if test_small_data:
+                    break
                 
     if verbose:
         print(' - COMPLETED\n')
     all_events_data = pd.concat(data)
+    # rename the columns
+    all_events_data.rename(columns={'type_displayName': 'type_name'}, inplace=True)
+    
     return all_events_data
 
 
@@ -49,7 +56,20 @@ def transform_data(match_events):
     team_id = -1
     poss = 0
     
-    for event in match_events:
+    # create a full dict of all players positions home and away
+    pla_pos = {}
+
+    try:
+        for pla in match_events['home']['players'] + match_events['away']['players']:
+            player_det = {'name': pla['name'],  
+                        'position': pla['position']}
+            pla_pos[pla['playerId']] = player_det
+    except: 
+        print(match_events.keys())
+        print(match_events['home'].keys())
+        print(match_events['away'].keys())
+
+    for event in match_events['events']:
         # unpack the qualifiers list 
         if 'qualifiers' in event:
             for qualifier in event['qualifiers']:
@@ -73,8 +93,16 @@ def transform_data(match_events):
         # add location 
         if "x" in event and "y" in event:
             event['location'] = f"[{event['x']}, {event['y']}]" 
-    
-    return match_events
+
+        # link player and player position 
+        if 'playerId' in event and 'teamId' in event:
+            # check the player in the team sheet
+            player_pos = pla_pos[event['playerId']]['position']
+            player_name = pla_pos[event['playerId']]['name']
+            event['player_name'] = player_name
+            event['position_name'] = player_pos
+
+    return match_events['events']
 
 
 def load_players_metadata(dataset_path=PATHS.STATSBOMB_DATA, sub_dir='lineups', force_create=False):
