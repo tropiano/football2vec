@@ -15,7 +15,7 @@ import tarfile
 
 
 def load_all_events_data(dataset_path=PATHS.STATSBOMB_DATA, season='2023_2024', 
-                         data_file='test.tar.gz', verbose=False, test_small_data=False):
+                         data_file=PATHS.REVPOOL_DATA, verbose=False, test_small_data=True):
     data = []
     if verbose:
         print('\nLoading all events data')
@@ -68,6 +68,11 @@ def transform_data(match_events):
         print(match_events.keys())
         print(match_events['home'].keys())
         print(match_events['away'].keys())
+    
+    # create a dict team_id->team_name
+    team_dict = {}
+    for t in ['home', 'away']:
+        team_dict[match_events[t]['teamId']] = match_events[t]['name']
 
     for event in match_events['events']:
         # unpack the qualifiers list 
@@ -101,6 +106,15 @@ def transform_data(match_events):
             player_name = pla_pos[event['playerId']]['name']
             event['player_name'] = player_name
             event['position_name'] = player_pos
+        # add team name
+        event['team_name'] = team_dict[event['teamId']]
+
+        # add statsbomb columns (set empty or 0 for now)
+        for col in ["shot_body_part_name", "shot_type_name", "pass_recipient_name"]:
+            event[col] = "empty"
+        for col in ["pass_assisted_shot_id", "shot_statsbomb_xg"]:
+            event[col] = 0
+
 
     return match_events['events']
 

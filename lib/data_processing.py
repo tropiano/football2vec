@@ -16,8 +16,9 @@ import os
 import pickle
 import plotly.express as px
 from sklearn.preprocessing import OrdinalEncoder, QuantileTransformer
-
-from lib.data_handler import load_all_events_data, load_players_metadata, load_matches_metadata, get_teams_metadata
+from lib.data_handler import load_all_events_data
+from lib.data_handler_revpool import load_all_events_data as load_all_events_data_revpool 
+from lib.data_handler import load_players_metadata, load_matches_metadata, get_teams_metadata
 from lib.language_patterns import check_if_shot_scored, check_if_one_one_one_chance, check_if_shot_outside_box, \
     check_if_dribble_won
 from lib.params import COLUMNS, PATHS, ARTIFACTS
@@ -197,7 +198,8 @@ class Corpus:
         return events_data
 
 
-def get_enriched_events_data(force_create=False, verbose=False, save_artifacts=False, **kwargs) -> pd.DataFrame:
+def get_enriched_events_data(force_create=False, verbose=False, save_artifacts=False, 
+                             data_source="statsbomb", test_small_data=False, **kwargs) -> pd.DataFrame:
     '''
     Build enriched events_data DataFrame. It apply to_metric_centered_coordinates on the data, and adds features:
         -  COLUMNS.START_X, COLUMNS.START_Y
@@ -219,9 +221,16 @@ def get_enriched_events_data(force_create=False, verbose=False, save_artifacts=F
         return pd.read_csv(enriched_events_data_path)
     else:
         if verbose: print('Building enriched_events_data...')
-        events_data = load_all_events_data(verbose=verbose)
 
-        # Covert key names to lower case as best practice, despite the confusion it may cause
+        # check which data source to use
+        if data_source == "statsbomb":
+            if verbose: print(' - Loading events data from StatsBomb...')
+            events_data = load_all_events_data(verbose=verbose)
+        elif data_source == "revpool":
+            if verbose: print(' - Loading events data from Revpool...')
+            events_data = load_all_events_data_revpool(verbose=verbose, test_small_data=test_small_data)
+
+        # Convert key names to lower case as best practice, despite the confusion it may cause
         for col in [COLUMNS.TEAM_NAME, COLUMNS.PLAYER_NAME]:
             events_data[col] = events_data[col].apply(lambda name_: name_.lower() if isinstance(name_, str) else name_)
 
@@ -395,6 +404,9 @@ def create_players_metrics_df(enriched_events_data: pd.DataFrame, matches_metada
 
         if verbose: print(f'>> Done.\n> Creating shot types probabilities and scoring features...')
         # Prepare columns for lift
+        
+        print(enriched_events_data)
+
         enriched_events_data[f'{COLUMNS.SHOOTING}:{COLUMNS.XG}'] = enriched_events_data[COLUMNS.GOAL] * \
                                                          enriched_events_data[COLUMNS.XG]
         enriched_events_data[f'{COLUMNS.SHOOTING}:{COLUMNS.GOAL}'] = enriched_events_data[COLUMNS.GOAL].copy()
@@ -550,12 +562,17 @@ def get_players_metrics_df(enriched_events_data, matches_metadata, verbose=False
     if (not os.path.exists(PATHS.PLAYERS_METRICS_PATH)) or (not os.path.exists(PATHS.BASELINE_PLAYERS_METRICS_PATH)):
         df, baselines = create_players_metrics_df(enriched_events_data, matches_metadata, verbose=verbose,
                                                   save_artifacts=save_artifacts, **kwargs)
+
+        print('player and baselines metrics df created')
+        print(df, baselines)
         return df, baselines
 
     df = pd.read_csv(PATHS.PLAYERS_METRICS_PATH)
     df.set_index(df.columns[0], inplace=True)
     with open(PATHS.BASELINE_PLAYERS_METRICS_PATH, 'rb') as f:
         baselines = pickle.load(f)
+    
+    
     return df, baselines
 
 

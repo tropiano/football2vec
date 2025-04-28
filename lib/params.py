@@ -5,6 +5,7 @@ PLOTLY_USERNAME = '?'
 PLOTLY_API_KEY = '?'
 ARTIFACTS = 'artifacts'
 MODELS_ARTIFACTS = os.path.join(ARTIFACTS, 'models_artifacts')
+REVPOOL_MODELS_ARTIFACTS = '../football2vec/artifacts/models_artifacts/'
 DATA = 'data'
 
 
@@ -14,7 +15,7 @@ class PATHS:
     STATSBOMB_DATA = os.path.join(DATA, 'statsbomb', 'data')
     PLAYERS_IMAGES = os.path.join(DATA, 'pics', 'players')
     ATTRIBUTES_BADGES = os.path.join(DATA, 'pics', 'attributes_badges')
-
+    REVPOOL_DATA = os.path.join('../../data/belgium-1.tar.gz')
     # OUTPUTS #
     # Processed data paths
     ## Events data
